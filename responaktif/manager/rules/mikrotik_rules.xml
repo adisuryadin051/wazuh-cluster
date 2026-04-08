@@ -1,0 +1,186 @@
+<!-- Rules untuk login failure -->
+<group name="Mikrotik_Login_Failure">
+  <rule id="110001" level="0">
+    <decoded_as>mikrotik_system_error</decoded_as>
+    <description>Login Failure Event</description>
+  </rule>
+
+  <rule id="110011" level="7">
+    <if_sid>110001</if_sid>
+    <match>login failure for user</match>
+    <description>mikrotik $(hostname): Failed login attempt detected for user $(dstuser) from $(srcip) via $(protocol)</description>
+    <mitre>
+      <id>T1110.001</id>
+      <id>T1021.004</id>
+    </mitre>
+    <group>authentication_failures,authentication_failed,gdpr_IV_35.7.d,gdpr_IV_32.2,gpg13_7.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+  
+  <rule id="110013" level="10" frequency="5" timeframe="120" ignore="60">
+    <if_matched_sid>110011</if_matched_sid>
+    <same_srcip/>
+    <description>mikrotik: brute force trying to get access from $(srcip) to the mikrotik via $(protocol). Authentication failed.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+   
+  <rule id="110014" level="12" frequency="30" timeframe="300">
+    <if_matched_sid>110011</if_matched_sid>
+    <same_srcip/>
+    <description>High brute force attack against MikroTik from $(srcip)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,bruteforce,critical</group>
+  </rule>  
+
+</group>
+
+<!-- Rules untuk log system info -->
+<group name="Mikrotik_System_Info">
+  <rule id="110012" level="5">
+    <decoded_as>mikrotik_system_info</decoded_as>
+    <description>System Info Event</description>
+  </rule>
+
+  <rule id="110021" level="5">
+    <if_sid>110012</if_sid>
+    <match>logged in</match>
+    <description>mikrotik $(hostname): MikroTik user $(dstuser) logged in from $(srcip) via $(protocol)</description>
+    <mitre>
+      <id>T1078</id>
+      <id>T1021</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.8,gpg13_7.9,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="110022" level="5">
+    <if_sid>110012</if_sid>
+    <match>logged out</match>
+    <description>mikrotik $(hostname): MikroTik user $(dstuser) logged out from $(srcip) via $(protocol)</description>
+  </rule>
+</group>
+
+<!-- Rules untuk log DHCP -->
+<group name="Mikrotik_DHCP_Info">
+  <rule id="110031" level="5">
+    <decoded_as>mikrotik_dhcp_info</decoded_as>
+    <description>DHCP Info Event</description>
+  </rule>
+
+  <rule id="110032" level="5">
+    <if_sid>110031</if_sid>
+    <match>dhcp-client on</match>
+    <description>mikrotik $(hostname): DHCP client on $(port) received IP address $(srcip)</description>
+  </rule>
+</group>
+
+<group name="Mikrotik_Interface_Info">
+  <rule id="110041" level="5">
+    <decoded_as>mikrotik_interface_info</decoded_as>
+    <description>Interface Info Event</description>
+  </rule>
+
+  <rule id="110042" level="5">
+    <if_sid>110041</if_sid>
+    <match>link up</match>
+    <description>mikrotik $(hostname): Interface $(port) link $(status)</description>
+  </rule>
+
+  <rule id="110043" level="5">
+    <if_sid>110041</if_sid>
+    <match>link down</match>
+    <description>mikrotik $(hostname): Interface $(port) link $(status)</description>
+  </rule>
+</group>
+
+<!-- Rules untuk log firewall -->
+<group name="Mikrotik_Firewall_Info">
+  <rule id="110050" level="5">
+    <decoded_as>mikrotik_firewall_info</decoded_as>
+    <description>Firewall Info Event</description>
+  </rule>
+
+  <rule id="110051" level="5">
+    <if_sid>110050</if_sid>
+    <match>firewall,info</match>
+    <description>mikrotik $(hostname): $(protocol) request ($(type)) from $(srcip) mac address $(srcmacAddress) to $(dstip) in: $(srcport) out: $(dstport) with len $(len)</description>
+    <group>firewall,network,icmp</group>
+    <mitre>
+      <id>T1569</id>
+    </mitre>
+  </rule>
+  
+  <rule id="110052" level="10" frequency="50" timeframe="2">
+    <if_matched_sid>110051</if_matched_sid>
+    <same_srcport/>
+    <description>Potential DoS attack detected from $(srcip) via $(srcport) with $(protocol) packets</description>
+    <group>firewall,network,icmp,dos</group>
+    <mitre>
+      <id>T1498</id>
+    </mitre>
+  </rule>
+  
+  <rule id="110080" level="9" frequency="20" timeframe="10">
+    <if_matched_sid>110051</if_matched_sid>
+    <same_srcip/>
+    <different_dstport/>
+    <description>Port scanning detected from $(srcip)</description>
+    <group>portscan,network</group>
+  </rule>
+</group>
+
+<!-- Rules untuk log rule -->
+<group name="Mikrotik_rule_Info">
+  <rule id="110060" level="5">
+    <decoded_as>mikrotik_system</decoded_as>
+    <description>Rule Info Event</description>
+  </rule>
+
+  <rule id="110061" level="5">
+    <if_sid>110060</if_sid>
+    <match>rule</match>
+    <description>mikrotik $(hostname): $(section) rule $(action) by $(dstuser)</description>
+  </rule>
+  
+  <rule id="110062" level="5">
+    <if_sid>110060</if_sid>
+    <match>router rebooted</match>
+    <description>MikroTik $(hostname): router rebooted</description>
+  </rule>
+</group>
+
+<!-- Rules untuk log active response -->
+<group name="Mikrotik_Active_Response">
+  <rule id="110071" level="5">
+    <decoded_as>mikrotik_active_response</decoded_as>
+    <description>Active Response Info Event</description>
+  </rule>
+
+  <rule id="110072" level="5">
+    <if_sid>110071</if_sid>
+    <match>Active response</match>
+    <description>mikrotik $(hostname): $(action) menambahkan $(srcip) ke address list $(list)</description>
+  </rule>
+  
+  <rule id="110073" level="5">
+    <decoded_as>mikrotik_active_response_null</decoded_as>
+    <match>IP address tidak diberikan</match>
+    <description>mikrotik $(hostname): IP address tidak diberikan. Tidak ada tindakan yang diambil.</description>
+  </rule>
+</group>
+
+
+<group name="mikrotik, custom_api,">
+  <rule id="100050" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="integration_source">mikrotik_api</field>
+    <match>login failure|failed to authenticate</match>
+    <description>MikroTik: Failed login attempt detected via API.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+</group>

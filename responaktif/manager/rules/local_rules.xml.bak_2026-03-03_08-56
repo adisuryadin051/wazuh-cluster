@@ -1,0 +1,87 @@
+<!-- Local rules -->
+
+<!-- Modify it at your will. -->
+<!-- Copyright (C) 2015, Wazuh Inc. -->
+
+<!-- Example -->
+<group name="local,syslog,sshd,">
+
+  <!--
+  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
+  -->
+  <rule id="100001" level="5">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>sshd: authentication failed from IP 1.1.1.1.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+</group>
+
+<!-- =============================================== -->
+<!--            MIKROTIK SIMPLE RULESET             -->
+<!-- =============================================== -->
+
+<group name="mikrotik,network,">
+
+  <!-- Base grouping -->
+  <rule id="130000" level="0">
+    <decoded_as>mikrotik-router</decoded_as>
+    <description>MikroTik: All events grouped</description>
+  </rule>
+
+
+  <!-- DHCP Event -->
+  <rule id="130001" level="5">
+    <if_sid>130000</if_sid>
+    <match>dhcp,info</match>
+    <description>MikroTik DHCP Event detected</description>
+    <group>network_access,</group>
+  </rule>
+
+
+  <!-- Firewall Event -->
+  <rule id="130002" level="7">
+    <if_sid>130000</if_sid>
+    <match>firewall,info</match>
+    <description>MikroTik Firewall Event detected</description>
+    <group>firewall,</group>
+  </rule>
+
+
+  <!-- System Warning -->
+  <rule id="130003" level="6">
+    <if_sid>130000</if_sid>
+    <match>system,warning</match>
+    <description>MikroTik System Warning detected</description>
+    <group>system_event,</group>
+  </rule>
+
+
+  <!-- System Error -->
+  <rule id="130004" level="10">
+    <if_sid>130000</if_sid>
+    <match>system,error</match>
+    <description>MikroTik System Error detected</description>
+    <group>system_event,</group>
+  </rule>
+
+
+  <!-- Script Event -->
+  <rule id="130005" level="3">
+    <if_sid>130000</if_sid>
+    <match>script,info</match>
+    <description>MikroTik Script Execution detected</description>
+    <group>system_event,</group>
+  </rule>
+
+
+  <!-- Test Log -->
+  <rule id="130006" level="8">
+    <if_sid>130000</if_sid>
+    <match>TEST LOG</match>
+    <description>MikroTik Log Ingestion Test Detected</description>
+    <group>test_event,</group>
+  </rule>
+
+</group>

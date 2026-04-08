@@ -1,0 +1,247 @@
+<!-- Local rules -->
+
+<!-- Modify it at your will. -->
+<!-- Copyright (C) 2015, Wazuh Inc. -->
+
+<!-- Example -->
+  <!--
+  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
+  -->
+<group name="local,syslog,sshd">
+
+  <!-- Ignore authentication failure dari IP tertentu -->
+  <rule id="100001" level="0">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>Ignore ssh authentication failures from IP 1.1.1.1</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5</group>
+  </rule>
+
+  <!-- Rate limit untuk rule 5710 -->
+  <rule id="100002" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>5710</if_matched_sid>
+    <same_srcip/>
+    <description>Multiple SSH authentication failures detected</description>
+  </rule>
+  
+  <rule id="100003" level="0">
+    <if_sid>5710</if_sid>
+    <srcip>192.168.24.173</srcip>
+    <description>Ignore SSH authentication failure from monitoring host</description>
+  </rule>
+
+  <rule id="10004" level="7" overwrite="yes">
+    <if_sid>5715</if_sid>
+    <description>sshd: Successful SSH login with elevated level.</description>
+    <group>authentication_success,pci_dss_10.2.5,</group>
+  </rule>
+
+</group>
+
+<!-- custom local rules start here -->
+
+<!-- block malicious known ip -->
+<group name="attack,">
+  <rule id="100100" level="10">
+    <if_group>web|attack|attacks</if_group>
+    <list field="srcip" lookup="address_match_key">etc/lists/blacklist-alienvault</list>
+    <description>IP address found in AlienVault reputation database.</description>
+  </rule>
+</group>
+
+<!-- detect malware by hash -->
+<group name="malware,">
+  <rule id="110002" level="13">
+    <!-- The if_sid tag references the built-in FIM rules -->
+    <if_sid>554, 550</if_sid>
+    <list field="md5" lookup="match_key">etc/lists/malware-hashes</list>
+    <description>File with known malware hash detected: $(file)</description>
+    <mitre>
+      <id>T1204.002</id>
+    </mitre>
+  </rule>
+</group>
+
+<!-- detect running netcat process -->
+<group name="ossec,">
+  <rule id="100050" level="0">
+    <if_sid>530</if_sid>
+    <match>^ossec: output: 'process list'</match>
+    <description>List of running processes.</description>
+    <group>process_monitor,</group>
+  </rule>
+
+  <rule id="100051" level="7" ignore="900">
+    <if_sid>100050</if_sid>
+    <match>nc -l</match>
+    <description>netcat listening for incoming connections.</description>
+    <group>process_monitor,</group>
+  </rule>
+</group>
+
+<!-- virustotal detect malware -->
+<group name="syscheck,pci_dss_11.5,nist_800_53_SI.7,">
+    <!-- Rules for Linux systems -->
+    <rule id="100200" level="7">
+        <if_sid>550</if_sid>
+        <field name="file">/root</field>
+        <description>File modified in /root directory.</description>
+    </rule>
+
+    <rule id="100201" level="7">
+        <if_sid>554</if_sid>
+        <field name="file">/root</field>
+        <description>File added to /root directory.</description>
+    </rule>
+    
+</group>
+
+<group name="wazuh_config_change">
+
+  <rule id="120001" level="7" ignore="300">
+    <if_sid>550</if_sid>
+    <field name="file">/var/ossec/etc/</field>
+    <description>Wazuh configuration modified</description>
+  </rule>
+
+</group>
+
+<group name="virustotal,">
+  <rule id="100092" level="12">
+    <if_sid>657</if_sid>
+    <match>Successfully removed threat</match>
+    <description>$(parameters.program) removed threat located at $(parameters.alert.data.virustotal.source.file)</description>
+  </rule>
+
+  <rule id="100093" level="12">
+    <if_sid>657</if_sid>
+    <match>Error removing threat</match>
+    <description>Error removing threat located at $(parameters.alert.data.virustotal.source.file)</description>
+  </rule>
+</group>
+
+<!-- malicious command -->
+<group name="audit">
+  <rule id="100210" level="12">
+      <if_sid>80792</if_sid>
+  <list field="audit.command" lookup="match_key_value" check_value="red">etc/lists/suspicious-programs</list>
+    <description>Audit: Highly Suspicious Command executed: $(audit.exe)</description>
+      <group>audit_command,</group>
+  </rule>
+</group>
+
+<!-- detect malware using yara -->
+<group name="syscheck,">
+  <rule id="100300" level="5">
+    <if_sid>550</if_sid>
+    <field name="file">/home</field>
+    <description>File modified in /home directory.</description>
+  </rule>
+
+  <rule id="100301" level="5">
+    <if_sid>554</if_sid>
+    <field name="file">/home</field>
+    <description>File added to /home directory.</description>
+  </rule>
+  <rule id="100302" level="5">
+    <if_sid>550</if_sid>
+    <field name="file" type="pcre2">(?i)C:\\Users.+Downloads</field>
+    <description>File modified in the downloads directory.</description>
+  </rule>
+
+  <rule id="100303" level="5">
+    <if_sid>554</if_sid>
+    <field name="file" type="pcre2">(?i)C:\\Users.+Downloads</field>
+    <description>File added to the downloads directory.</description>
+  </rule>
+</group>
+
+<group name="yara,">
+  <rule id="108000" level="0">
+    <decoded_as>YARA_decoder</decoded_as>
+    <description>YARA grouping rule</description>
+  </rule>
+  <rule id="108001" level="10">
+    <if_sid>108000</if_sid>
+    <match>wazuh-YARA: INFO - Scan result: </match>
+    <description>File "$(YARA.scanned_file)" is a positive match for YARA rule: $(YARA.rule_name)</description>
+  </rule>
+
+  <rule id="108002" level="5">
+    <if_sid>108000</if_sid>
+    <field name="yara.file_deleted">\.</field>
+    <description>Active response successfully removed malicious file "$(YARA.file_deleted)"</description>
+  </rule>
+
+  <rule id="108003" level="12">
+    <if_sid>108000</if_sid>
+    <field name="YARA.file_not_deleted">\.</field>
+    <description>Active response unable to delete malicious file "$(YARA.file_not_deleted)"</description>
+  </rule>
+</group>
+<!--<group name="syscheck,">-->
+<!--  <rule id="100300" level="7">-->
+<!--    <if_sid>550</if_sid>-->
+<!--    <field name="file">/tmp/yara/malware/</field>-->
+<!--    <description>File modified in /tmp/yara/malware/ directory.</description>-->
+<!--  </rule>-->
+<!--  <rule id="100301" level="7">-->
+<!--    <if_sid>554</if_sid>-->
+<!--    <field name="file">/tmp/yara/malware/</field>-->
+<!--    <description>File added to /tmp/yara/malware/ directory.</description>-->
+<!--  </rule>-->
+<!--</group>-->
+
+<!--<group name="yara,">-->
+<!--  <rule id="108000" level="0">-->
+<!--    <decoded_as>yara_decoder</decoded_as>-->
+<!--    <description>Yara grouping rule</description>-->
+<!--  </rule>-->
+<!--  <rule id="108001" level="12">-->
+<!--    <if_sid>108000</if_sid>-->
+<!--    <match>wazuh-yara: INFO - Scan result: </match>-->
+<!--    <description>File "$(yara_scanned_file)" is a positive match. Yara rule: $(yara_rule)</description>-->
+<!--  </rule>-->
+<!--</group>-->
+
+<!-- suricata detect DoS and Nmap -->
+<group name="suricata">
+  <rule id="100400" level="12">
+    <if_sid>86600</if_sid>
+    <field name="event_type">^alert$</field>
+    <match>ET DOS Inbound GoldenEye DoS attack</match>
+    <description>GoldenEye DoS attack has been detected. </description>
+    <mitre>
+      <id>T1498</id>
+    </mitre>
+  </rule>
+
+  <rule id="100401" level="12">
+    <if_sid>86600</if_sid>
+    <field name="event_type">^alert$</field>
+    <match>ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap Scripting Engine)</match>
+    <description>Nmap scripting engine detected. </description>
+    <mitre>
+      <id>T1595</id>
+    </mitre>
+  </rule>
+</group>
+
+<group name="mikrotik,">
+
+  <rule id="100010" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="integration_source">mikrotik_api</field>
+    <description>MikroTik Event: $(message)</description>
+  </rule>
+
+  <rule id="100011" level="8">
+    <if_sid>100010</if_sid>
+    <match>login failure</match>
+    <description>MikroTik: Failed login attempt detected.</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+
+</group>
