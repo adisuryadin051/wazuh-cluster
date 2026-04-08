@@ -1,0 +1,10 @@
+<group name="syslog">
+<rule id="100080" level="5">
+<match>login failed: invalid username or password</match>
+<group>MikroTik,authentication_failed</group>
+<mitre>
+<id>T1078,T1110</id>
+</mitre>
+<description>Mikrotik - User Login Failed</description>
+</rule>
+</group>
